@@ -1,14 +1,15 @@
 //
-//  Edit in TextMate.mm
+//  Edit in ODBEditor.mm
 //
 //  Created by Allan Odgaard on 2005-11-26.
-//  See /trunk/LICENSE for license details
+//  See LICENSE for license details
 //
+//  Generalized by Chris Eidhof and Eelco Lempsink from 'Edit in TextMate.mm'
 
 #import <WebKit/WebKit.h>
 #import <Carbon/Carbon.h>
 #import <map>
-#import "Edit in TextMate.h"
+#import "Edit in ODBEditor.h"
 
 // from ODBEditorSuite.h
 #define keyFileSender   'FSnd'
@@ -18,7 +19,8 @@
 
 static NSMutableDictionary* OpenFiles;
 static NSMutableSet* FailedFiles;
-static NSString* TextMateBundleIdentifier = @"com.macromates.textmate";
+static NSString* ODBEditorBundleIdentifier;
+static NSString* ODBEditorName;
 
 #pragma options align=mac68k
 struct PBX_SelectionRange
@@ -32,7 +34,7 @@ struct PBX_SelectionRange
 };
 #pragma options align=reset
 
-@implementation EditInTextMate
+@implementation EditInODBEditor
 + (void)setODBEventHandlers
 {
 	NSAppleEventManager* eventManager = [NSAppleEventManager sharedAppleEventManager];
@@ -47,27 +49,27 @@ struct PBX_SelectionRange
 	[eventManager removeEventHandlerForEventClass:kODBEditorSuite andEventID:kAEClosedFile];
 }
 
-+ (BOOL)launchTextMate
++ (BOOL)launchODBEditor
 {
 	NSArray* array = [[NSWorkspace sharedWorkspace] launchedApplications];
 	for(unsigned i = [array count]; --i; )
 	{
-		if([[[array objectAtIndex:i] objectForKey:@"NSApplicationBundleIdentifier"] isEqualToString:TextMateBundleIdentifier])
+		if([[[array objectAtIndex:i] objectForKey:@"NSApplicationBundleIdentifier"] isEqualToString:ODBEditorBundleIdentifier])
 			return YES;
 	}
-	return [[NSWorkspace sharedWorkspace] launchAppWithBundleIdentifier:TextMateBundleIdentifier options:0L additionalEventParamDescriptor:nil launchIdentifier:nil];
+	return [[NSWorkspace sharedWorkspace] launchAppWithBundleIdentifier:ODBEditorBundleIdentifier options:0L additionalEventParamDescriptor:nil launchIdentifier:nil];
 }
 
 + (void)asyncEditStringWithOptions:(NSDictionary*)someOptions
 {
 	NSAutoreleasePool* pool = [NSAutoreleasePool new];
 
-	if(![self launchTextMate])
+	if(![self launchODBEditor])
 		return;
 
 	/* =========== */
 
-	NSData* targetBundleID = [TextMateBundleIdentifier dataUsingEncoding:NSUTF8StringEncoding];
+	NSData* targetBundleID = [ODBEditorBundleIdentifier dataUsingEncoding:NSUTF8StringEncoding];
 	NSAppleEventDescriptor* targetDescriptor = [NSAppleEventDescriptor descriptorWithDescriptorType:typeApplicationBundleID data:targetBundleID];
 	NSAppleEventDescriptor* appleEvent = [NSAppleEventDescriptor appleEventWithEventClass:kCoreEventClass eventID:kAEOpenDocuments targetDescriptor:targetDescriptor returnID:kAutoGenerateReturnID transactionID:kAnyTransactionID];
 	NSAppleEventDescriptor* replyDescriptor = nil;
@@ -85,7 +87,7 @@ struct PBX_SelectionRange
 	{
 		PBX_SelectionRange pos = { };
 		pos.lineNum = line;
-		[appleEvent setParamDescriptor:[NSAppleEventDescriptor descriptorWithDescriptorType:'????' bytes:&pos length:sizeof(pos)] forKeyword:keyAEPosition];
+		[appleEvent setParamDescriptor:[NSAppleEventDescriptor descriptorWithDescriptorType:typeChar bytes:&pos length:sizeof(pos)] forKeyword:keyAEPosition];
 	}
 
 	OSStatus status = AESend([appleEvent aeDesc], &reply, kAEWaitReply, kAENormalPriority, kAEDefaultTimeout, NULL, NULL);
@@ -111,7 +113,7 @@ struct PBX_SelectionRange
 		NSString* path = [[NSBundle bundleForClass:[self class]] pathForResource:@"url map" ofType:@"plist"];
 		NSMutableDictionary* map = [NSMutableDictionary dictionaryWithContentsOfFile:path];
 
-		NSString* customBindingsPath = [[NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES) lastObject] stringByAppendingPathComponent:@"Preferences/com.macromates.edit_in_textmate.plist"];
+		NSString* customBindingsPath = [[NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES) lastObject] stringByAppendingPathComponent:@"Preferences/org.slashpunt.edit_in_odbeditor.plist"];
 		if(NSDictionary* associations = [[NSDictionary dictionaryWithContentsOfFile:customBindingsPath] objectForKey:@"URLAssociations"])
 			[map addEntriesFromDictionary:associations];
 
@@ -178,18 +180,18 @@ struct PBX_SelectionRange
 
 	if([view window])
 	{
-		if ([view respondsToSelector:@selector(textMateDidModifyString:withObject:)])
+		if ([view respondsToSelector:@selector(odbEditorDidModifyString:withObject:)])
 		{
 			NSString* newString = [[[NSString alloc] initWithData:[NSData dataWithContentsOfFile:fileName] encoding:NSUTF8StringEncoding] autorelease];
 			NSObject* anObject = [options objectForKey:@"object"];
-			[view performSelector:@selector(textMateDidModifyString:withObject:) withObject:newString withObject:anObject];
+			[view performSelector:@selector(odbEditorDidModifyString:withObject:) withObject:newString withObject:anObject];
 			[FailedFiles removeObject:fileName];
 			fileName = nil;
 		}
-		else if([view respondsToSelector:@selector(textMateDidModifyString:)])
+		else if([view respondsToSelector:@selector(odbEditorDidModifyString:)])
 		{
 			NSString* newString = [[[NSString alloc] initWithData:[NSData dataWithContentsOfFile:fileName] encoding:NSUTF8StringEncoding] autorelease];
-			[view performSelector:@selector(textMateDidModifyString:) withObject:newString];
+			[view performSelector:@selector(odbEditorDidModifyString:) withObject:newString];
 			[FailedFiles removeObject:fileName];
 			fileName = nil;
 		}
@@ -253,7 +255,8 @@ struct PBX_SelectionRange
 	if(NSMenu* editMenu = [self findEditMenu])
 	{
 		[editMenu addItem:[NSMenuItem separatorItem]];
-		id <NSMenuItem> menuItem = [editMenu addItemWithTitle:[NSString stringWithUTF8String:"Edit in TextMate…"] action:@selector(editInTextMate:) keyEquivalent:@"e"];
+		NSString* ellips = [NSString stringWithUTF8String:"\xe2\x80\xa6"]; // utf-8 for the '...' character (literal utf8 is not allowed in source code)
+		id <NSMenuItem> menuItem = [editMenu addItemWithTitle:[NSString stringWithFormat:@"Edit in %@%@", ODBEditorName, ellips] action:@selector(editInODBEditor:) keyEquivalent:@"E"];
 		[menuItem setKeyEquivalentModifierMask:NSControlKeyMask | NSCommandKeyMask];
 	}
 }
@@ -262,8 +265,23 @@ struct PBX_SelectionRange
 {
 	OpenFiles = [NSMutableDictionary new];
 	FailedFiles = [NSMutableSet new];
-//	NSString* bundleIdentifier = [[NSBundle mainBundle] bundleIdentifier];
-	if([[NSUserDefaults standardUserDefaults] boolForKey:@"DisableEditInTextMateMenuItem"] == NO)
+	NSString* mainBundleIdentifier = [[NSBundle mainBundle] bundleIdentifier]; // reads app we're used inside off
+	NSString* bundleIdentifier = @"org.slashpunt.edit_in_odbeditor"; // XXX Should this be hardcoded?
+	NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+	[defaults addSuiteNamed:bundleIdentifier];
+	NSDictionary *appDefaults = [NSDictionary dictionaryWithObjectsAndKeys:
+		@"NO",        @"DisableEditInODBEditorMenuItem",
+		@"",          @"ODBEditorBundleIdentifier",
+		@"<Unknown>", @"ODBEditorName",
+		nil];
+ 
+	[defaults registerDefaults:appDefaults];	
+	
+	ODBEditorBundleIdentifier = [[defaults stringForKey:@"ODBEditorBundleIdentifier"] retain] ?: @"";
+	ODBEditorName             = [[defaults stringForKey:@"ODBEditorName"] retain] ?: @"<Unknown>";
+	if([defaults boolForKey:@"DisableEditInODBEditorMenuItem"] == NO
+		&& ![ODBEditorBundleIdentifier isEqualToString:@""]
+		&& ![ODBEditorBundleIdentifier isEqualToString:mainBundleIdentifier])
 		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(installMenuItem:) name:NSApplicationDidFinishLaunchingNotification object:[NSApplication sharedApplication]];
 }
 @end

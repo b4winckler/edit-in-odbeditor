@@ -1,13 +1,15 @@
 //
-//  WebView: Edit in TextMate.mm
+//  WebView: Edit in ODBEditor.mm
 //
 //  Created by Allan Odgaard on 2005-11-27.
-//  See /trunk/LICENSE for license details
+//  See LICENSE for license details
 //
+//  Generalized by Chris Eidhof and Eelco Lempsink from 'WebView: Edit in TextMate.mm'
+
 
 #import <WebKit/WebKit.h>
 #import <vector>
-#import "Edit in TextMate.h"
+#import "Edit in ODBEditor.h"
 
 #ifndef sizeofA
 #define sizeofA(x) (sizeof(x)/sizeof(x[0]))
@@ -22,18 +24,18 @@
 - (void)setSelectionRange:(int)start end:(int)end;
 @end
 
-@interface WebView (EditInTextMate)
-- (void)editInTextMate:(id)sender;
+@interface WebView (EditInODBEditor)
+- (void)editInODBEditor:(id)sender;
 @end
 
-@interface NSString (EditInTextMate)
-- (NSString*)TM_stringByTrimmingWhitespace;
-- (NSString*)TM_stringByReplacingString:(NSString*)aSearchString withString:(NSString*)aReplaceString;
-- (NSString*)TM_stringByNbspEscapingSpaces;
+@interface NSString (EditInODBEditor)
+- (NSString*)ODB_stringByTrimmingWhitespace;
+- (NSString*)ODB_stringByReplacingString:(NSString*)aSearchString withString:(NSString*)aReplaceString;
+- (NSString*)ODB_stringByNbspEscapingSpaces;
 @end
 
-@implementation NSString (EditInTextMate)
-- (NSString*)TM_stringByTrimmingWhitespace
+@implementation NSString (EditInODBEditor)
+- (NSString*)ODB_stringByTrimmingWhitespace
 {
 	NSString* str = self;
 	while([str hasPrefix:@" "])
@@ -44,12 +46,12 @@
 	return str;
 }
 
-- (NSString*)TM_stringByReplacingString:(NSString*)aSearchString withString:(NSString*)aReplaceString
+- (NSString*)ODB_stringByReplacingString:(NSString*)aSearchString withString:(NSString*)aReplaceString
 {
 	return [[self componentsSeparatedByString:aSearchString] componentsJoinedByString:aReplaceString];
 }
 
-- (NSString*)TM_stringByNbspEscapingSpaces
+- (NSString*)ODB_stringByNbspEscapingSpaces
 {
 	unsigned len = [self length];
 	unichar* buf = new unichar[len];
@@ -89,14 +91,14 @@ private:
 		if([str isEqualToString:@""])
 			return;
 
-		str = [str TM_stringByTrimmingWhitespace];
+		str = [str ODB_stringByTrimmingWhitespace];
 		if([str isEqualToString:@""])
 		{
 			pendingWhitespace = YES;
 			return;
 		}
 
-		str = [str TM_stringByReplacingString:[NSString stringWithUTF8String:" "] withString:@" "];
+		str = [str ODB_stringByReplacingString:[NSString stringWithUTF8String:" "] withString:@" "];
 
 		if(pendingFlush)
 		{
@@ -280,12 +282,12 @@ static DOMHTMLTextAreaElement* find_active_text_area (WebView* view)
 	return res;
 }
 
-@implementation WebView (EditInTextMate)
-- (void)editInTextMate:(id)sender
+@implementation WebView (EditInODBEditor)
+- (void)editInODBEditor:(id)sender
 {
 	if([self isEditable])
 	{
-		// Mail uses an editable WebView, in which case we want to send the entire page to TextMate
+		// Mail uses an editable WebView, in which case we want to send the entire page to the ODB Editor
 
 		NSString* const CARET = [NSString stringWithFormat:@"%C", 0xFFFD];
 		NSString* str = @"";
@@ -322,7 +324,7 @@ static DOMHTMLTextAreaElement* find_active_text_area (WebView* view)
 				str = [split componentsJoinedByString:@""];
 			}
 		}
-		[EditInTextMate externalEditString:str startingAtLine:lineNumber forView:self];
+		[EditInODBEditor externalEditString:str startingAtLine:lineNumber forView:self];
 	}
 	else
 	{
@@ -340,13 +342,13 @@ static DOMHTMLTextAreaElement* find_active_text_area (WebView* view)
 						break;
 					lineNumber++;
 				} while(true);
-				[EditInTextMate externalEditString:str startingAtLine:lineNumber forView:self withObject:textArea];
+				[EditInODBEditor externalEditString:str startingAtLine:lineNumber forView:self withObject:textArea];
 			}
 		else	NSBeep();
 	}
 }
 
-- (void)textMateDidModifyString:(NSString*)newString withObject:(NSObject*)textArea
+- (void)odbEditorDidModifyString:(NSString*)newString withObject:(NSObject*)textArea
 {
 	if([self isEditable])
 	{
@@ -388,10 +390,10 @@ static DOMHTMLTextAreaElement* find_active_text_area (WebView* view)
 			}
 			else
 			{
-				line = [line TM_stringByNbspEscapingSpaces];
-				line = [line TM_stringByReplacingString:@"&" withString:@"&amp;"];
-				line = [line TM_stringByReplacingString:@"<" withString:@"&lt;"];
-				line = [line TM_stringByReplacingString:@">" withString:@"&gt;"];
+				line = [line ODB_stringByNbspEscapingSpaces];
+				line = [line ODB_stringByReplacingString:@"&" withString:@"&amp;"];
+				line = [line ODB_stringByReplacingString:@"<" withString:@"&lt;"];
+				line = [line ODB_stringByReplacingString:@">" withString:@"&gt;"];
 				[res appendFormat:@"<DIV>%@</DIV>", line];
 			}
 		}

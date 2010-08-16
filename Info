@@ -3,13 +3,13 @@
 <plist version="1.0">
 <dict>
 	<key>BundleName</key>
-	<string>Edit in TextMate.bundle</string>
+	<string>Edit in ODBEditor.bundle</string>
 	<key>LoadBundleOnLaunch</key>
 	<string>YES</string>
 	<key>LocalizedNames</key>
 	<dict>
 		<key>English</key>
-		<string>Edit in TextMate</string>
+		<string>Edit in ODBEditor</string>
 	</dict>
 	<key>NoMenuEntry</key>
 	<string>YES</string>

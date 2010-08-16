@@ -1,18 +1,19 @@
 //
-//  NSTextView: Edit in TextMate.mm
+//  NSTextView: Edit in ODBEditor.mm
 //
 //  Created by Allan Odgaard on 2005-11-27.
-//  See /trunk/LICENSE for license details
+//  See LICENSE for license details
 //
+//  Generalized by Chris Eidhof and Eelco Lempsink from 'NSTextView: Edit in TextMate.mm'
 
-#import "Edit in TextMate.h"
+#import "Edit in ODBEditor.h"
 
-@interface NSTextView (EditInTextMate)
-- (void)editInTextMate:(id)sender;
+@interface NSTextView (EditInODBEditor)
+- (void)editInODBEditor:(id)sender;
 @end
 
-@implementation NSTextView (EditInTextMate)
-- (void)editInTextMate:(id)sender
+@implementation NSTextView (EditInODBEditor)
+- (void)editInODBEditor:(id)sender
 {
 	if(![self isEditable])
 		return (void)NSBeep();
@@ -33,10 +34,10 @@
 		selectedRange = NSMakeRange(0, [str length]);
 	}
 
-	[EditInTextMate externalEditString:[str substringWithRange:selectedRange] startingAtLine:lineNumber forView:self];
+	[EditInODBEditor externalEditString:[str substringWithRange:selectedRange] startingAtLine:lineNumber forView:self];
 }
 
-- (void)textMateDidModifyString:(NSString*)newString
+- (void)odbEditorDidModifyString:(NSString*)newString
 {
 	NSRange selectedRange = [self selectedRange];
 	BOOL hadSelection = selectedRange.length != 0;
